@@ -1,5 +1,15 @@
 const properties = require("./json/properties.json");
 const users = require("./json/users.json");
+const { Pool } = require('pg');
+
+
+//Start connection to local database. Make sure user, password and database correspond to the info in your local computer
+const pool = new Pool({
+  user: 'labber', 
+  password: 'labber',
+  host: 'localhost', 
+  database: 'lightbnb' 
+});
 
 /// Users
 
@@ -12,7 +22,7 @@ const getUserWithEmail = function (email) {
   let resolvedUser = null;
   for (const userId in users) {
     const user = users[userId];
-    if (user?.email.toLowerCase() === email?.toLowerCase()) {
+    if (user.email.toLowerCase() === email.toLowerCase()) {
       resolvedUser = user;
     }
   }
@@ -60,11 +70,28 @@ const getAllReservations = function (guest_id, limit = 10) {
  * @return {Promise<[{}]>}  A promise to the properties.
  */
 const getAllProperties = function (options, limit = 10) {
+  /*
   const limitedProperties = {};
   for (let i = 1; i <= limit; i++) {
     limitedProperties[i] = properties[i];
   }
   return Promise.resolve(limitedProperties);
+  */
+
+const values = [limit]
+const queryString = `
+SELECT * 
+FROM properties 
+LIMIT 10;
+`
+return pool
+.query(queryString, values)
+.then(res => {
+ console.log(res.rows)
+})
+.catch((err) => {
+  console.error(err.message)
+});
 };
 
 /**

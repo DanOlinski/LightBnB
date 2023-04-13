@@ -16,5 +16,8 @@
   "bugs": {
     "url": "https://github.com/DanOlinski/LightBnB/issues"
   },
-  "homepage": "https://github.com/DanOlinski/LightBnB#readme"
+  "homepage": "https://github.com/DanOlinski/LightBnB#readme",
+  "dependencies": {
+    "pg": "^8.10.0"
+  }
 }
