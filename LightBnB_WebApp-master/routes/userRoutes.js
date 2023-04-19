@@ -9,12 +9,18 @@ router.post("/", (req, res) => {
   const user = req.body;
   user.password = bcrypt.hashSync(user.password, 12);
   database
-    .addUser(user)
+    .getUserWithEmail(user.email)
+    .then((usr) => {
+      console.log('#', usr)
+      if(usr) {
+        return null
+      }
+      return database.addUser(user)
+    })
     .then((user) => {
       if (!user) {
         return res.send({ error: "error" });
       }
-
       req.session.userId = user.id;
       res.send("🤗");
     })
