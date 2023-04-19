@@ -25,10 +25,10 @@ const getUserWithEmail = function(email) {
 
   const values = [email];
   const queryString = `
-SELECT *
-FROM users
-WHERE email = $1;
-`;
+  SELECT *
+  FROM users
+  WHERE email = $1;
+  `;
   return pool.query(queryString, values)
     .then(res => {
       return res.rows[0];
@@ -90,9 +90,24 @@ const addUser = function(user) {
  * @return {Promise<[{}]>} A promise to the reservations.
  */
 const getAllReservations = function(guest_id, limit = 10) {
-  return getAllProperties(null, 2);
+  //return getAllProperties(null, 2);
+  const values = [guest_id, limit];
+  const queryString = `
+  SELECT avg(property_reviews.rating) as average_rating, properties.*, reservations.*
+  FROM properties
+  JOIN property_reviews ON properties.id = property_reviews.property_id
+  JOIN reservations ON properties.id = reservations.property_id
+  WHERE reservations.guest_id = $1
+  GROUP BY
+  properties.id, 
+  reservations.id
+  LIMIT $2;
+  `;
+  return pool.query(queryString, values)
+    .then(res => {
+      return res.rows;
+    });
 };
-
 /// Properties
 
 /**
@@ -109,22 +124,7 @@ SELECT avg(property_reviews.rating) as average_rating, properties.*
 FROM properties
 JOIN property_reviews ON properties.id = property_reviews.property_id
 GROUP BY
-properties.title, 
-properties.id, 
-properties.owner_id,
-properties.description,
-properties.thumbnail_photo_url,
-properties.cover_photo_url,
-properties.cost_per_night,
-properties.parking_spaces,
-properties.number_of_bathrooms,
-properties.number_of_bedrooms,
-properties.country,
-properties.street,
-properties.city,
-properties.province,
-properties.post_code,
-properties.active
+properties.id 
 LIMIT $1;
 `;
   return pool
