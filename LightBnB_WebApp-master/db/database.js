@@ -1,4 +1,3 @@
-const properties = require("./json/properties.json");
 const { Pool } = require('pg');
 
 
@@ -10,20 +9,19 @@ const pool = new Pool({
   database: 'lightbnb'
 });
 
-/// Users
-
 /**
  * Get a single user from the database given their email.
  * @param {String} email The email of the user.
  * @return {Promise<{}>} A promise to the user.
  */
-
 const getUserWithEmail = function(email) {
+  //return null if no e-mail is passed in
   if (!email) {
     return null;
   }
 
   const values = [email];
+  //selecting all columns from users entity
   const queryString = `
   SELECT *
   FROM users
@@ -40,10 +38,13 @@ const getUserWithEmail = function(email) {
  * @return {Promise<{}>} A promise to the user.
  */
 const getUserWithId = function(id) {
+  //return null if id is not passed in
   if (!id) {
     return null;
   }
+
   const values = [id];
+  //select all columns from users entity inside database. filter the user by id
   const queryString = `
   SELECT *
   FROM users
@@ -61,10 +62,13 @@ const getUserWithId = function(id) {
  * @return {Promise<{}>} A promise to the user.
  */
 const addUser = function(user) {
+  //if information is not provided return null
   if (!user.email || !user.name || !user.password) {
     return null;
   }
+
   const values = [user.name, user.email, user.password];
+  //insert a new user into users entity and return an object with the new user's information
   const queryString = `
   INSERT INTO users (
     name, 
@@ -82,8 +86,8 @@ const addUser = function(user) {
       return res.rows[0];
     });
 };
-/// Reservations
 
+/// Reservations
 /**
  * Get all reservations for a single user.
  * @param {string} guest_id The id of the user.
@@ -116,63 +120,70 @@ const getAllReservations = function(guest_id, limit = 10) {
  * @return {Promise<[{}]>}  A promise to the properties.
  */
 const getAllProperties = function(options, limit = 10) {
-  
+
   const values = [];
   let queryString = `
-SELECT avg(property_reviews.rating) as average_rating, properties.*
-FROM properties
-JOIN property_reviews ON properties.id = property_reviews.property_id
-`;
+  SELECT avg(property_reviews.rating) as average_rating, properties.*
+  FROM properties
+  JOIN property_reviews ON properties.id = property_reviews.property_id
+  `;
 
-if(options){
-if(Object.keys(options).length !== 0){
-  queryString += `WHERE `
-}
+  //the options argument is an object that can contain a number of searchable filters
+  //this if statement check if any of the searchable filters where activated(added to the searchOptions object), if yes it adds that value and adds a query string to filter that object.
+  //if options object is not passed in, js will crash since options.city won't exist, this if prevents js from crashing. if no filter is applied don't run the code
+  if (options) {
+    //you can't query with more than one WHERE, the next filters have to be wrttiten as AND, but we don't know which filter will be active first so this code adds a WHERE, before the correct query
+    if (Object.keys(options).length !== 0) {
+      queryString += `WHERE `;
+    }
+    //this will determine if there should be an AND added or not
+    let booleanOptions = false;
 
-let booleanOptions = false
+    if (options.city) {
+      //this will let the next filters use AND, since WHERE will already have been used. if city filter isn't activated WHERE will be used instead of AND by the functions below
+      booleanOptions = true;
+      values.push(`%${options.city}%`);
+      queryString += `city LIKE $${values.length}`;
+    }
 
-if (options.city) {
-  booleanOptions = true
-  values.push(`%${options.city}%`);
-  queryString += `city LIKE $${values.length}`;
-}
+    if (options.owner_id) {
+      //if boolean is true it means a filter before this one was activated meaning I need to add an AND, and also set the boolean to true for the next filter to know it has to use AND
+      if (booleanOptions) {
+        queryString += `AND `;
+      }
+      booleanOptions = true;
+      values.push(`%${options.owner_id}%`);
+      queryString += `owner_id LIKE $${values.length}`;
+    }
 
-if (options.owner_id) {
-  if(booleanOptions){
-    queryString += `AND `
+    if (options.minimum_price_per_night) {
+      if (booleanOptions) {
+        queryString += `AND `;
+      }
+      booleanOptions = true;
+      values.push(Number(options.minimum_price_per_night) * 100);
+      queryString += `properties.cost_per_night >= $${values.length}`;
+    }
+    if (options.maximum_price_per_night) {
+      if (booleanOptions) {
+        queryString += `AND `;
+      }
+      booleanOptions = true;
+      values.push(Number(options.maximum_price_per_night,) * 100);
+      queryString += `properties.cost_per_night <= $${values.length}`;
+    }
+    if (options.minimum_rating) {
+      if (booleanOptions) {
+        queryString += `AND `;
+      }
+      booleanOptions = true;
+      values.push(options.minimum_rating);
+      queryString += `property_reviews.rating >= $${values.length}`;
+    }
   }
-  booleanOptions = true
-  values.push(`%${options.owner_id}%`);
-  queryString += `owner_id LIKE $${values.length}`;
-}
-
-if (options.minimum_price_per_night) {
-  if(booleanOptions){
-    queryString += `AND `
-  }
-  booleanOptions = true
-  values.push(Number(options.minimum_price_per_night)*100);
-  queryString += `properties.cost_per_night > $${values.length}`;
-}
-if (options.maximum_price_per_night) {
-  if(booleanOptions){
-    queryString += `AND `
-  }
-  booleanOptions = true
-  values.push(Number(options.maximum_price_per_night,)*100);
-  queryString += `properties.cost_per_night < $${values.length}`;
-}
-if (options.minimum_rating) {
-  if(booleanOptions){
-    queryString += `AND `
-  }
-  booleanOptions = true
-  values.push(options.minimum_rating);
-  queryString += `property_reviews.rating >= $${values.length}`;
-}
-}
-values.push(limit);
-queryString += `
+  //this part of the query has to always be present but it has to be at the end of the query that is why it is only added after the above is executed
+  values.push(limit);
+  queryString += `
   GROUP BY properties.id
   ORDER BY cost_per_night
   LIMIT $${values.length};

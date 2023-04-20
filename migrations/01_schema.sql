@@ -1,4 +1,7 @@
---The DDL(Data Definition Language) below belongs to a database called lightbnb
+--to run this file from a terminal type the two commands below: 
+--startpostgres
+--psql
+--The DDL(Data Definition Language) below belongs to a database called lightbnb (if the database doesn't exist in the computer running this file run the following command from a psql server: CREATE DATABASE lightbnb)
 --To run the file type the following into the terminal(from within the correct folder): \i migrations/01_schema.sql
 
 --The DDL deletes tables before creating them in case tables need to be created again. DO not run this file unless you want to delete all info stored in the specified tables
