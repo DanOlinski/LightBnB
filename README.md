@@ -23,5 +23,5 @@ Powered by SQL queries a user can search for a property filtering through desire
 - In ./migrations/01_schema.sql check the instructions in the file and run that file accordingly
 - In ./seeds/01_seeds.sql check the instructions in the file and run that file accordingly
 - In ./LightBnB_WebApp-master/db/database.js file on lines from 6 to 9, make sure the correct database is created as well as user, password and host
-- Run the development web server using the `npm start` command.
+- Run the development web server using the `npm start` command from within the folder ./LightBnB_WebApp-master
 - In the browser type(into the url bar): http://localhost:3000/
