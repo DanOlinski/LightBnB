@@ -90,7 +90,6 @@ const addUser = function(user) {
  * @return {Promise<[{}]>} A promise to the reservations.
  */
 const getAllReservations = function(guest_id, limit = 10) {
-  //return getAllProperties(null, 2);
   const values = [guest_id, limit];
   const queryString = `
   SELECT avg(property_reviews.rating) as average_rating, properties.*, reservations.*
@@ -118,18 +117,74 @@ const getAllReservations = function(guest_id, limit = 10) {
  */
 const getAllProperties = function(options, limit = 10) {
   
-  const values = [limit];
-  const queryString = `
+  const values = [];
+  let queryString = `
 SELECT avg(property_reviews.rating) as average_rating, properties.*
 FROM properties
 JOIN property_reviews ON properties.id = property_reviews.property_id
-GROUP BY
-properties.id 
-LIMIT $1;
 `;
+
+if(options){
+if(Object.keys(options).length !== 0){
+  queryString += `WHERE `
+}
+
+let booleanOptions = false
+
+if (options.city) {
+  booleanOptions = true
+  values.push(`%${options.city}%`);
+  queryString += `city LIKE $${values.length}`;
+}
+
+if (options.owner_id) {
+  if(booleanOptions){
+    queryString += `AND `
+  }
+  booleanOptions = true
+  values.push(`%${options.owner_id}%`);
+  queryString += `owner_id LIKE $${values.length}`;
+}
+
+if (options.minimum_price_per_night) {
+  if(booleanOptions){
+    queryString += `AND `
+  }
+  booleanOptions = true
+  values.push(Number(options.minimum_price_per_night)*100);
+  queryString += `properties.cost_per_night > $${values.length}`;
+}
+if (options.maximum_price_per_night) {
+  if(booleanOptions){
+    queryString += `AND `
+  }
+  booleanOptions = true
+  values.push(Number(options.maximum_price_per_night,)*100);
+  queryString += `properties.cost_per_night < $${values.length}`;
+}
+if (options.minimum_rating) {
+  if(booleanOptions){
+    queryString += `AND `
+  }
+  booleanOptions = true
+  values.push(options.minimum_rating);
+  queryString += `property_reviews.rating >= $${values.length}`;
+}
+}
+values.push(limit);
+queryString += `
+  GROUP BY properties.id
+  ORDER BY cost_per_night
+  LIMIT $${values.length};
+  `;
+
+  console.log(queryString)
+  console.log(values)
+  console.log(options)
   return pool
     .query(queryString, values)
     .then(res => {
+      console.log(res.rows)
       return res.rows;
     });
 };
