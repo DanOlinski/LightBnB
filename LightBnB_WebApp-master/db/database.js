@@ -119,8 +119,9 @@ const getAllReservations = function(guest_id, limit = 10) {
  * @param {*} limit The number of results to return.
  * @return {Promise<[{}]>}  A promise to the properties.
  */
-const getAllProperties = function(options, limit = 10) {
 
+
+const getAllProperties = function(options, limit = 10) {
   const values = [];
   let queryString = `
   SELECT avg(property_reviews.rating) as average_rating, properties.*
@@ -132,9 +133,15 @@ const getAllProperties = function(options, limit = 10) {
   //this if statement check if any of the searchable filters where activated(added to the searchOptions object), if yes it adds that value and adds a query string to filter that object.
   //if options object is not passed in, js will crash since options.city won't exist, this if prevents js from crashing. if no filter is applied don't run the code
   if (options) {
-    //you can't query with more than one WHERE, the next filters have to be wrttiten as AND, but we don't know which filter will be active first so this code adds a WHERE, before the correct query
+    //you can't query with more than one WHERE, the next filters have to be written as AND, but we don't know which filter will be active first so this code adds a WHERE, before the correct query
     if (Object.keys(options).length !== 0) {
-      queryString += `WHERE `;
+      //if only options.minimum_rating has a value don't add WHERE
+      if (options.minimum_rating && !options.city && !options.maximum_price_per_night && !options.minimum_price_per_night) {
+        queryString += ``;
+      } else {
+        queryString += `WHERE `;
+      }
+      
     }
     //this will determine if there should be an AND added or not
     let booleanOptions = false;
@@ -149,16 +156,15 @@ const getAllProperties = function(options, limit = 10) {
     if (options.owner_id) {
       //if boolean is true it means a filter before this one was activated meaning I need to add an AND, and also set the boolean to true for the next filter to know it has to use AND
       if (booleanOptions) {
-        queryString += `AND `;
+        queryString += ` AND `;
       }
       booleanOptions = true;
-      values.push(`%${options.owner_id}%`);
-      queryString += `owner_id LIKE $${values.length}`;
+      values.push(options.owner_id);
+      queryString += `owner_id = $${values.length}`;
     }
-
     if (options.minimum_price_per_night) {
       if (booleanOptions) {
-        queryString += `AND `;
+        queryString += ` AND `;
       }
       booleanOptions = true;
       values.push(Number(options.minimum_price_per_night) * 100);
@@ -166,25 +172,28 @@ const getAllProperties = function(options, limit = 10) {
     }
     if (options.maximum_price_per_night) {
       if (booleanOptions) {
-        queryString += `AND `;
+        queryString += ` AND `;
       }
       booleanOptions = true;
       values.push(Number(options.maximum_price_per_night,) * 100);
       queryString += `properties.cost_per_night <= $${values.length}`;
     }
-    if (options.minimum_rating) {
-      if (booleanOptions) {
-        queryString += `AND `;
-      }
-      booleanOptions = true;
-      values.push(options.minimum_rating);
-      queryString += `property_reviews.rating >= $${values.length}`;
-    }
   }
+  
+  queryString += `
+  GROUP BY properties.id
+  `;
+
+  if (options && options.minimum_rating) {
+    values.push(options.minimum_rating);
+    queryString += `
+  HAVING avg(property_reviews.rating) >= $${values.length}
+  `;
+  }
+  
   //this part of the query has to always be present but it has to be at the end of the query that is why it is only added after the above is executed
   values.push(limit);
   queryString += `
-  GROUP BY properties.id
   ORDER BY cost_per_night
   LIMIT $${values.length};
   `;
@@ -194,6 +203,7 @@ const getAllProperties = function(options, limit = 10) {
       return res.rows;
     });
 };
+
 /**
  * Add a property to the database
  * @param {{}} property An object containing all of the property details.
@@ -246,7 +256,7 @@ const addProperty = function(property) {
     $3,
     $4,
     $5,
-    $6,
+    $6*100,
     $7,
     $8,
     $9,
@@ -257,6 +267,7 @@ const addProperty = function(property) {
     $14
     )
     RETURNING *;`;
+
   return pool.query(queryString, values)
     .then(res => {
       return res.rows[0];
