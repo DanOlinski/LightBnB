@@ -126,57 +126,42 @@ const getAllProperties = function(options, limit = 10) {
   let queryString = `
   SELECT avg(property_reviews.rating) as average_rating, properties.*
   FROM properties
-  JOIN property_reviews ON properties.id = property_reviews.property_id
+  LEFT JOIN property_reviews ON properties.id = property_reviews.property_id
+  WHERE 1 = 1
   `;
 
   //the options argument is an object that can contain a number of searchable filters
   //this if statement check if any of the searchable filters where activated(added to the searchOptions object), if yes it adds that value and adds a query string to filter that object.
   //if options object is not passed in, js will crash since options.city won't exist, this if prevents js from crashing. if no filter is applied don't run the code
   if (options) {
-    //you can't query with more than one WHERE, the next filters have to be written as AND, but we don't know which filter will be active first so this code adds a WHERE, before the correct query
-    if (Object.keys(options).length !== 0) {
-      //if only options.minimum_rating has a value don't add WHERE
-      if (options.minimum_rating && !options.city && !options.maximum_price_per_night && !options.minimum_price_per_night) {
-        queryString += ``;
-      } else {
-        queryString += `WHERE `;
-      }
+    
+    // if (Object.keys(options).length !== 0) {
+    //   //if only options.minimum_rating has a value don't add WHERE
+    //   if (options.minimum_rating && !options.city && !options.maximum_price_per_night && !options.minimum_price_per_night) {
+    //     queryString += ``;
+    //   } else {
+    //     queryString += `WHERE `;
+    //   }
       
-    }
-    //this will determine if there should be an AND added or not
-    let booleanOptions = false;
+    // }
+
 
     if (options.city) {
-      //this will let the next filters use AND, since WHERE will already have been used. if city filter isn't activated WHERE will be used instead of AND by the functions below
-      booleanOptions = true;
       values.push(`%${options.city}%`);
-      queryString += `city LIKE $${values.length}`;
+      queryString += `AND city LIKE $${values.length}`;
     }
 
     if (options.owner_id) {
-      //if boolean is true it means a filter before this one was activated meaning I need to add an AND, and also set the boolean to true for the next filter to know it has to use AND
-      if (booleanOptions) {
-        queryString += ` AND `;
-      }
-      booleanOptions = true;
       values.push(options.owner_id);
-      queryString += `owner_id = $${values.length}`;
+      queryString += `AND owner_id = $${values.length}`;
     }
     if (options.minimum_price_per_night) {
-      if (booleanOptions) {
-        queryString += ` AND `;
-      }
-      booleanOptions = true;
       values.push(Number(options.minimum_price_per_night) * 100);
-      queryString += `properties.cost_per_night >= $${values.length}`;
+      queryString += `AND properties.cost_per_night >= $${values.length}`;
     }
     if (options.maximum_price_per_night) {
-      if (booleanOptions) {
-        queryString += ` AND `;
-      }
-      booleanOptions = true;
       values.push(Number(options.maximum_price_per_night,) * 100);
-      queryString += `properties.cost_per_night <= $${values.length}`;
+      queryString += `AND properties.cost_per_night <= $${values.length}`;
     }
   }
   
